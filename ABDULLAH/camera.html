@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Clothing Color Recommender</title>
+  <style>
+    .color-box {
+      width: 50px;
+      height: 50px;
+      display: inline-block;
+      margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    #imagePreview {
+      max-width: 300px;
+      display: block;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Upload Clothing Photo</h1>
+  <input type="file" id="imageUpload" accept="image/*">
+  <img id="imagePreview" crossorigin="anonymous" />
+
+  <h2>Main Colors</h2>
+  <div id="colorPalette"></div>
+
+  <h2>Recommended Matches</h2>
+  <div id="recommendations"></div>
+
+  <script src="https://unpkg.com/color-thief/dist/color-thief.umd.js"></script>
+  <script>
+    function getComplementaryColor([r, g, b]) {
+      return [255 - r, 255 - g, 255 - b];
+    }
+
+    const imageUpload = document.getElementById("imageUpload");
+    const imagePreview = document.getElementById("imagePreview");
+    const colorPalette = document.getElementById("colorPalette");
+    const recommendations = document.getElementById("recommendations");
+    const colorThief = new ColorThief();
+
+    imageUpload.addEventListener("change", function () {
+      const file = this.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        imagePreview.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    imagePreview.addEventListener("load", function () {
+      setTimeout(() => {
+        try {
+          const colors = colorThief.getPalette(imagePreview, 5);
+          colorPalette.innerHTML = '';
+          recommendations.innerHTML = '';
+
+          colors.forEach(color => {
+            const box = document.createElement('div');
+            box.className = 'color-box';
+            box.style.backgroundColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+            colorPalette.appendChild(box);
+
+            const comp = getComplementaryColor(color);
+            const matchBox = document.createElement('div');
+            matchBox.className = 'color-box';
+            matchBox.style.backgroundColor = `rgb(${comp[0]}, ${comp[1]}, ${comp[2]})`;
+            recommendations.appendChild(matchBox);
+          });
+
+        } catch (err) {
+          console.error("Color extraction error:", err);
+        }
+      }, 300);
+    });
+  </script>
+</body>
+</html>
