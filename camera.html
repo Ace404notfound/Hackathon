@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIGMENT</title>
+    <link rel="stylesheet" href="sty.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <title>Color Recommender</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f5f5f5;
+      padding: 2rem;
+    }
+
+    .container {
+      background: white;
+      padding: 2rem;
+      border-radius: 15px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      display: inline-block;
+    }
+
+    #preview {
+      max-width: 200px;
+      margin-top: 1rem;
+      display: none;
+      border-radius: 10px;
+    }
+
+    button {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .color-box {
+      width: 50px;
+      height: 50px;
+      display: inline-block;
+      margin: 10px;
+      border-radius: 6px;
+      border: 2px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+    <style>
+        html, body {
+         height: 100%;
+         margin: 0;
+         padding: 0;
+       }
+     
+       body{
+         background: linear-gradient(to right,#281549, #8322ef, #ff4ff3, #ffffff);
+     }
+     
+     main{
+         margin: 20px;
+     }</style>
+       
+      
+       <header class="header1">
+         <div class="header-container">
+             <a href="index.html">
+              <img src="paintset-removebg-preview.png" alt="Logo" class="logo" /></a>
+         <h1 class="h1">
+           <span class="pig1">P</span>
+           <span class="pig2">I</span>
+           <span class="pig3">G</span>
+           <span class="pig4">M</span>
+           <span class="pig5">E</span>
+           <span class="pig6">N</span>
+           <span class="pig7">T</span>
+         </h1>
+         </div>
+         <nav class="navbar">
+             <ul>
+                 <li><a href="index.html">Home</a></li>
+                 
+                 <li><a href="about.html">About</a></li>
+                 <li><a href="contact.html">Contact</a></li>
+             </ul>
+            </nav>
+     
+            
+
+              
+     </header>
+     <h2>Get the best color that matches your vibe!</h2>
+  <div class="container">
+    <h2>Upload an Image</h2>
+    <input type="file" id="imageInput" accept="image/*" />
+    <img id="preview" src="#" alt="Preview" />
+    <br />
+    <button id="getColorBtn">Get Recommendations</button>
+    <div id="recommendations"></div>
+  </div>
+
+  <canvas id="canvas" style="display: none;"></canvas>
+
+  <script>
+    const imageInput = document.getElementById("imageInput");
+    const preview = document.getElementById("preview");
+    const getColorBtn = document.getElementById("getColorBtn");
+    const recommendations = document.getElementById("recommendations");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    let imageLoaded = false;
+
+    imageInput.addEventListener("change", function (e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          preview.onload = () => {
+            imageLoaded = true;
+          };
+          preview.src = event.target.result;
+          preview.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    function brightenHSL(hslString) {
+      const match = hslString.match(/hsl\((\d+),\s*(\d+)%?,\s*(\d+)%?\)/);
+      if (!match) return hslString;
+
+      let h = parseInt(match[1]);
+      let s = parseInt(match[2]);
+      let l = parseInt(match[3]);
+
+      l = Math.min(l + 15, 90);
+      s = Math.min(s + 10, 100);
+
+      return `hsl(${h}, ${s}%, ${l}%)`;
+    }
+
+    getColorBtn.addEventListener("click", () => {
+      if (!imageLoaded) {
+        alert("Please upload an image first.");
+        return;
+      }
+
+      canvas.width = preview.naturalWidth;
+      canvas.height = preview.naturalHeight;
+      ctx.drawImage(preview, 0, 0);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const pixels = imageData.data;
+
+      const colorCounts = {};
+      const sampleRate = 10;
+      let brightColorsFound = false;
+
+      for (let i = 0; i < pixels.length; i += 4 * sampleRate) {
+        const r = pixels[i];
+        const g = pixels[i + 1];
+        const b = pixels[i + 2];
+
+        const { h, s, l } = rgbToHSL(r, g, b);
+
+        if (l > 60) {
+          brightColorsFound = true;
+          const key = `hsl(${Math.round(h)}, ${Math.round(s)}%, ${Math.round(l)}%)`;
+          colorCounts[key] = (colorCounts[key] || 0) + 1;
+        }
+      }
+
+      if (!brightColorsFound) {
+        recommendations.innerHTML = "<p>No bright colors found.</p>";
+        return;
+      }
+
+      const sortedColors = Object.entries(colorCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(entry => entry[0]);
+
+      const selectedColors = sortedColors.slice(0, 3);
+
+      recommendations.innerHTML = "<h3>Recommended Colors</h3>";
+      selectedColors.forEach(color => {
+        const brighter = brightenHSL(color);
+        const div = document.createElement("div");
+        div.className = "color-box";
+        div.style.backgroundColor = brighter;
+        recommendations.appendChild(div);
+      });
+    });
+
+    function rgbToHSL(r, g, b) {
+      r /= 255;
+      g /= 255;
+      b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+
+      if (max === min) {
+        h = s = 0;
+      } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = ((g - b) / d + (g < b ? 6 : 0)); break;
+          case g: h = ((b - r) / d + 2); break;
+          case b: h = ((r - g) / d + 4); break;
+        }
+        h *= 60;
+      }
+
+      return { h, s: s * 100, l: l * 100 };
+    }
+  </script>
+</body>
+</html>
